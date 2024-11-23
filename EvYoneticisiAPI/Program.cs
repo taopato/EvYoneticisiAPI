@@ -18,15 +18,14 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         {
             ValidateIssuer = true,
             ValidateAudience = true,
-            ValidateLifetime = true, // Token süresinin doðrulanmasýný etkinleþtir
+            ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
             ValidIssuer = builder.Configuration["Jwt:Issuer"],
             ValidAudience = builder.Configuration["Jwt:Audience"],
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"])),
-            ClockSkew = TimeSpan.Zero // Token süresinin doðruluðunu tam olarak kontrol etmek için
+            ClockSkew = TimeSpan.Zero
         };
 
-        // React Native uygulamalarý için detaylý hata mesajlarýný etkinleþtir
         options.Events = new JwtBearerEvents
         {
             OnAuthenticationFailed = context =>
@@ -47,9 +46,9 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy.AllowAnyOrigin() // Herhangi bir kaynaktan gelen isteklere izin ver
-              .AllowAnyMethod() // GET, POST, PUT, DELETE gibi tüm HTTP metodlarýna izin ver
-              .AllowAnyHeader(); // Herhangi bir HTTP baþlýðýna izin ver
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
     });
 });
 
@@ -72,25 +71,30 @@ catch (Exception ex)
     Console.WriteLine($"Veritabaný baðlantý hatasý: {ex.Message}");
 }
 
+// **6. Kestrel Ayarlarý**
+builder.WebHost.ConfigureKestrel(options =>
+{
+    // HTTPS baðlantýsý için
+    options.ListenAnyIP(7008, listenOptions =>
+    {
+        listenOptions.UseHttps(); // HTTPS portu
+    });
+
+    // HTTP baðlantýsý için
+    options.ListenAnyIP(5000); // HTTP portu
+});
+
+// **7. Middleware'ler**
 var app = builder.Build();
 
-// **6. Hata Yönetimi ve Swagger**
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-else
-{
-    // Üretim ortamý için genel hata yakalama
-    app.UseExceptionHandler("/error");
-}
 
-// **7. Middleware'ler**
-app.UseCors("AllowAll"); // CORS politikasý
-app.UseAuthentication(); // JWT doðrulama
-app.UseAuthorization();  // Yetkilendirme
-
-app.MapControllers(); // Controller'lar için route yapýlandýrmasý
-
+app.UseCors("AllowAll");
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapControllers();
 app.Run();
